@@ -1,3 +1,4 @@
+# copyright Yans Khoja
 from PIL import Image
 # https://ascendances.wordpress.com/2016/08/03/redimensionner-des-images-avec-python-resize-image/
 from resizeimage import resizeimage 

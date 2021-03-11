@@ -149,7 +149,7 @@ else :
     
     tensor_to_image(init_image).show()
     
-    
+    # test git
     #Affichage des images
     # plt.subplot(1, 2, 1)
     # imshow(plt,init_image, 'Image')

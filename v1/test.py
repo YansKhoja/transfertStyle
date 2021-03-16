@@ -35,9 +35,22 @@
 # plt.show()
 
 
+# import tensorflow as tf
+# m0 = tf.random.normal(shape=[2, 3])
+# m1 = tf.random.normal(shape=[3, 5])
+# e = tf.einsum('ij,jk->ik', m0, m1)
+# # output[i,k] = sum_j m0[i,j] * m1[j, k]
+# print(e.shape)
+
 import tensorflow as tf
-m0 = tf.random.normal(shape=[2, 3])
-m1 = tf.random.normal(shape=[3, 5])
-e = tf.einsum('ij,jk->ik', m0, m1)
-# output[i,k] = sum_j m0[i,j] * m1[j, k]
-print(e.shape)
+import tensorflow_hub as hub
+from functions import *
+import os
+os.environ['TFHUB_MODEL_LOAD_FORMAT'] = 'COMPRESSED'
+hub_handle = 'https://tfhub.dev/google/magenta/arbitrary-image-stylization-v1-256/2'
+hub_module = hub.load(hub_handle)
+content_image = load_img('.\..\data\portrait1.jpg',[224, 224])
+style_image = load_img('.\..\data\picasso.jpg', [224, 224])
+stylized_image = hub_model(tf.constant(content_image), tf.constant(style_image))[0]
+tensor_to_image(stylized_image)
+

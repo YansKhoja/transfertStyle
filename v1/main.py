@@ -1,3 +1,4 @@
+# copyright Yans Khoja
 from PIL import Image
 # https://ascendances.wordpress.com/2016/08/03/redimensionner-des-images-avec-python-resize-image/
 from resizeimage import resizeimage 
@@ -14,6 +15,7 @@ from keras.models import Model
 from keras.optimizers import SGD
 from functions import *
 import sys
+import time
 
 if sys.argv[1]  == 'init' :
 
@@ -41,7 +43,7 @@ if sys.argv[1]  == 'init' :
     
 else : 
     # Content layer for the feature maps
-    content_layers = ['block4_conv2']
+    content_layers = ['block5_conv2']
 
     # Style layer for the feature maps.
     style_layers = ['block1_conv1',
@@ -57,12 +59,18 @@ else :
     num_layers = (num_content_layers,num_style_layers)
     
     #Chargement des images
-    content_image = load_img('.\..\data\Tubingen.jpg',[224, 224])
-    style_image = load_img('.\..\data\Derschrei.jpg', [224, 224])
+    content_image = load_img('.\..\data\portrait1.jpg',[224, 224])
+    style_image = load_img('.\..\data\picasso.jpg', [224, 224])
     
+    
+    # plt.subplot(1, 2, 1)
+    # imshow(plt, content_image, 'Content Image')
+    # plt.subplot(1, 2, 2)
+    # imshow(plt, style_image, 'Style Image')
+    # plt.show()
     # pré-processing VGG19
-    content_image = tf.keras.applications.vgg19.preprocess_input(content_image)
-    style_image = tf.keras.applications.vgg19.preprocess_input(style_image)
+    # content_image = tf.keras.applications.vgg19.preprocess_input(content_image)
+    # style_image = tf.keras.applications.vgg19.preprocess_input(style_image)
     
     
     #Les images doivent être contenu dans un array (1,224,224,3) et en float 32
@@ -73,11 +81,11 @@ else :
     style_image = tf.image.convert_image_dtype(style_image, tf.float32)
     
     # #Affichage des images
-    # plt.subplot(1, 2, 1)
-    # imshow(content_image, 'Content Image')
-    # plt.subplot(1, 2, 2)
-    # imshow(style_image, 'Style Image')
-    # plt.show()
+    plt.subplot(1, 2, 1)
+    imshow(plt, content_image, 'Content Image')
+    plt.subplot(1, 2, 2)
+    imshow(plt, style_image, 'Style Image')
+    plt.show()
     
     #Création du modèle
     custom_model = create_model(style_layers, content_layers)
@@ -98,58 +106,41 @@ else :
     #   print(output)
     
     # Set initial image (Nous partons de l'image content)
-    init_image = tf.Variable(content_image)
+    init_image = tf.Variable(style_image)
     
     # Usage d'un adam optimizer
     opt = tf.optimizers.Adam(learning_rate=5, beta_1=0.99, epsilon=1e-1)
     
     # Début du traitement
     # num_iterations = 1000
-    content_weight = 1e3
-    style_weight= 1e-2
+    content_weight = 1e4
+    style_weight= 1e-3
     
-    
-    loss_weights = (style_weight, content_weight)
     idx = 0
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
+    loss_weights = (style_weight, content_weight)
+    
+    start = time.time()
+    
+    epochs = 20
+    steps_per_epoch = 100
+    
+    step = 0
+    for n in range(epochs):
+      for m in range(steps_per_epoch):
+        step += 1
+        train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
+        print(".", end='')
+      print("Train step: {}".format(step))
+    
     init_image = train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
-    print(init_image)
+    tensor_to_image(init_image).show()
+    end = time.time()
+    print("Total time: {:.1f}".format(end-start))
+    
+    # print(init_image)
     # print(init_image.shape)
     
-    tensor_to_image(init_image).show()
     
-    # test git
     #Affichage des images
     # plt.subplot(1, 2, 1)
     # imshow(plt,init_image, 'Image')

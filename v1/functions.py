@@ -93,8 +93,8 @@ def imshow(plt, image, title=None):
   
 def load_img(path_to_img, new_shape):  
   img = tf.image.decode_image(tf.io.read_file(path_to_img))
-  img = tf.image.resize(img, new_shape, method='nearest', preserve_aspect_ratio=False, antialias=False )
-  print(img)
+  # img = resizeimage.resize_cover(img, new_shape)
+  img = tf.image.resize(img, new_shape, method='nearest', preserve_aspect_ratio=False, antialias=True )
   return img
 
 def create_model(style_layers, content_layers):
@@ -246,18 +246,17 @@ def train_step(opt, image_init, style_layers,content_layers, custom_model, num_l
    # print("num_layers : "+str(num_layers))
    # print("target" + str(target))
    # print("loss_weights" + str(loss_weights))
-   idx = idx + 1 
    with tf.GradientTape() as tape:
        outputs =  get_outputs(style_layers,content_layers, custom_model, image_init, num_layers)
        loss = style_content_loss(outputs,target,loss_weights, num_layers)
-   print('=========== train_step' + str(idx) + ' =============')
-   print("outputs : ")
-   print(outputs)
-   print("loss : ")  
-   print(loss)
+   # print('=========== train_step =============')
+   # print("outputs : ")
+   # print(outputs)
+   # print("loss : ")  
+   # print(loss)
    grad = tape.gradient(loss, image_init)
-   print("grad : ")
-   print(grad)
+   # print("grad : ")
+   # print(grad)
    opt.apply_gradients([(grad, image_init)])
    image_init.assign(clip_0_1(image_init))
    

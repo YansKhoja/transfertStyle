@@ -1,7 +1,7 @@
 # Deep-artist
 Image Style Transfert Using Convolutional Neural Networks
 
-Config project : 
+Config project (feature/perf - branch): 
 (source of compatibility : https://www.tensorflow.org/install/source#gpu) 
 python = 3.7.7
 keras-gpu = 2.3.1

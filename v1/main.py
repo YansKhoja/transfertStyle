@@ -1,17 +1,21 @@
-# copyright Yans Khoja
+#
+# Copyright Yans Khoja
+#
 from PIL import Image
 # https://ascendances.wordpress.com/2016/08/03/redimensionner-des-images-avec-python-resize-image/
-from resizeimage import resizeimage 
+from resizeimage import resizeimage
 from IPython.display import clear_output
 import numpy as np
 from matplotlib import pyplot as plt
 import tensorflow as tf
+
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth=True
 sess =  tf.compat.v1.Session(config=config)
 tf.executing_eagerly()
 # tf.enable_eager_execution()
 print("Eager execution: {}".format(tf.executing_eagerly()))
+
 import keras
 from keras import *
 from keras.applications.vgg19 import VGG19
@@ -45,9 +49,15 @@ style_image = load_img('.\..\data\Kanagawa.jpg', [224, 224])
 # content_image = tf.keras.applications.vgg19.preprocess_input(content_image)
 # style_image = tf.keras.applications.vgg19.preprocess_input(style_image)
 
-#Les images doivent être contenu dans un array (1,224,224,3) et en float 32
-content_image = np.reshape(content_image,(1,np.size(content_image,0),np.size(content_image,1),np.size(content_image,2)))
-style_image = np.reshape(style_image,(1,np.size(style_image,0),np.size(style_image,1),np.size(style_image,2)))
+#Les images doivent etre contenu dans un array (1,224,224,3) et en float 32
+content_image = np.reshape( content_image,
+                            ( 1,np.size(content_image,0),
+                                np.size(content_image,1),
+                                np.size(content_image,2)))
+style_image = np.reshape( style_image,
+                          (1, np.size(style_image,0),
+                              np.size(style_image,1),
+                              np.size(style_image,2)))
 
 content_image = tf.image.convert_image_dtype(content_image, tf.float32)
 style_image = tf.image.convert_image_dtype(style_image, tf.float32)
@@ -59,14 +69,18 @@ style_image = tf.image.convert_image_dtype(style_image, tf.float32)
 # imshow(plt, style_image, 'Style Image')
 
 
-#Création du modèle
+#Creation du modele
 custom_model = create_model(style_layers, content_layers)
 
-# Stockage des feature représentation pour chacune des images 
+# Stockage des feature representation pour chacune des images
 style_outputs_target = dict()
 content_outputs_target = dict()
-style_outputs_target  = get_outputs(style_layers,content_layers, custom_model, tf.constant(style_image), num_layers)
-content_outputs_target = get_outputs(style_layers,content_layers, custom_model, tf.constant(content_image), num_layers)
+style_outputs_target  = get_outputs( style_layers,content_layers,
+                                     custom_model, tf.constant(style_image),
+                                     num_layers)
+content_outputs_target = get_outputs( style_layers,content_layers,
+                                      custom_model, tf.constant(content_image),
+                                      num_layers)
 
 # Stockage dans un unique dictionnaire
 outputs_target = dict()
@@ -83,7 +97,7 @@ init_image = tf.Variable(content_image)
 # Usage d'un adam optimizer
 opt = tf.optimizers.Adam(learning_rate=0.2, beta_1=0.99, epsilon=1e-1)
 
-# Début du traitement
+# Debut du traitement
 content_weight = 1e4
 style_weight= 1e-2
 
@@ -99,20 +113,21 @@ step = 0
 for n in range(epochs):
   for m in range(steps_per_epoch):
     step += 1
-    train_step(opt, init_image, style_layers, content_layers, custom_model, num_layers, outputs_target, loss_weights)
+    train_step( opt, init_image, style_layers, content_layers,
+                custom_model, num_layers, outputs_target, loss_weights)
     # tensor_to_image(init_image).show()
-    print(".", end='')
-    
+    print(".")
+
   print("Train step: {}".format(step))
    # tensor_to_image(init_image).show()
   imshow(plt, init_image)
   plt.draw()
   plt.pause(0.2)
   fig.clear()
-  
+
 end = time.time()
 print("Total time: {:.1f}".format(end-start))
 
 imshow(plt, init_image)
 plt.show()
-    
+

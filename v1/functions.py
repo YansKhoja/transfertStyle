@@ -208,7 +208,7 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     num_style_layers, num_content_layers = num_layers
 
     # todo : Simplify this single instruction to multiple intruction (too long, possible error root cause)
-    style_loss = tf.add_n([tf.reduce_mean( tf.square(style_outputs[name]-style_targets_outputs[name])) for name in style_outputs.keys()])
+    style_loss = tf.add_n([tf.reduce_mean(tf.square(style_outputs[name]-style_targets_outputs[name])) for name in style_outputs.keys()])
     # style_loss *= (4. * (3 ** 2) * ((224*224) ** 2))
     style_loss *= style_weight / float(num_style_layers)
 

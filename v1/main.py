@@ -95,7 +95,7 @@ outputs_target['content_outputs'] = content_outputs_target
 init_image = tf.Variable(content_image)
 
 # Usage d'un adam optimizer
-opt = tf.optimizers.Adam(learning_rate=0.2, beta_1=0.99, epsilon=1e-1)
+opt = tf.optimizers.Adam(learning_rate=0.001, beta_1=0.9, epsilon=1e-1)
 
 # Debut du traitement
 content_weight = 1e4
@@ -116,7 +116,7 @@ for n in range(epochs):
     train_step( opt, init_image, style_layers, content_layers,
                 custom_model, num_layers, outputs_target, loss_weights)
     # tensor_to_image(init_image).show()
-    print(".")
+    print(".",end='')
 
   print("Train step: {}".format(step))
    # tensor_to_image(init_image).show()

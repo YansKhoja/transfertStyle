@@ -1,35 +1,29 @@
 #
 # Copyright Yans Khoja
 #
-from PIL import Image
-# https://ascendances.wordpress.com/2016/08/03/redimensionner-des-images-avec-python-resize-image/
-from resizeimage import resizeimage
-from IPython.display import clear_output
 import numpy as np
 from matplotlib import pyplot as plt
 import tensorflow as tf
-
-config = tf.compat.v1.ConfigProto()
-config.gpu_options.allow_growth=True
-sess =  tf.compat.v1.Session(config=config)
-tf.executing_eagerly()
-# tf.enable_eager_execution()
-print("Eager execution: {}".format(tf.executing_eagerly()))
-
 import keras
 from keras import *
 from keras.applications.vgg19 import VGG19
 from keras.models import Model
 from keras.optimizers import SGD
 from functions import *
-import sys
 import time
 
+# Config GPU
+config = tf.compat.v1.ConfigProto()
+config.gpu_options.allow_growth=True
+sess =  tf.compat.v1.Session(config=config)
 
-# Content layer for the feature maps
+# Activation de l'executing eagerly
+tf.executing_eagerly()
+
+# Listes des "feature maps" à récupérer pour l'image content
 content_layers = ['block5_conv2']
 
-# Style layer for the feature maps.
+# Listes des "feature maps" à récupérer pour l'image content
 style_layers = ['block1_conv1',
                 'block2_conv1',
                 'block3_conv1',
@@ -37,42 +31,45 @@ style_layers = ['block1_conv1',
                 'block5_conv1'
                 ]
 
+# Récupération de la taille des deux listes
 num_content_layers = len(content_layers)
 num_style_layers = len(style_layers)
-
 num_layers = (num_content_layers,num_style_layers)
 
-#Chargement des images
-content_image = load_img('.\..\data\Turtle.jpg',[224, 224])
-style_image = load_img('.\..\data\Kanagawa.jpg', [224, 224])
+# Chargement des images
+content_image = tf.keras.preprocessing.image.load_img('.\..\data\Labrador.jpg', grayscale=False, color_mode='rgb', target_size=None,
+    interpolation='nearest')
+style_image = tf.keras.preprocessing.image.load_img('.\..\data\Kandinsky.jpg', grayscale=False, color_mode='rgb', target_size=None,
+    interpolation='nearest')
 
-# content_image = tf.keras.applications.vgg19.preprocess_input(content_image)
-# style_image = tf.keras.applications.vgg19.preprocess_input(style_image)
+size_originale_content = np.size(content_image,0) , np.size(content_image,1) 
+size_originale_style = np.size(style_image,0) , np.size(style_image,1) 
 
-#Les images doivent etre contenu dans un array (1,224,224,3) et en float 32
-content_image = np.reshape( content_image,
-                            ( 1,np.size(content_image,0),
+# Convertir les images doivent etre contenu dans un array (1,224,224,3) et en float 32
+content_image = np.reshape(content_image,
+                            (1,np.size(content_image,0),
                                 np.size(content_image,1),
                                 np.size(content_image,2)))
-style_image = np.reshape( style_image,
+
+style_image = np.reshape(style_image,
                           (1, np.size(style_image,0),
                               np.size(style_image,1),
                               np.size(style_image,2)))
 
+content_image = tf.image.resize(content_image, [224,224], method='nearest', preserve_aspect_ratio=False,
+    antialias=False)
+style_image = tf.image.resize(style_image, [224,224], method='nearest', preserve_aspect_ratio=False,
+    antialias=False)
+
+
+
 content_image = tf.image.convert_image_dtype(content_image, tf.float32)
 style_image = tf.image.convert_image_dtype(style_image, tf.float32)
 
-# Affichage des images
-# plt.subplot(1, 2, 1)
-# imshow(plt, content_image, 'Content Image')
-# plt.subplot(1, 2, 2)
-# imshow(plt, style_image, 'Style Image')
-
-
-#Creation du modele
+# Creation du modele
 custom_model = create_model(style_layers, content_layers)
 
-# Stockage des feature representation pour chacune des images
+# Stockage des "feature representation" pour chacune des images
 style_outputs_target = dict()
 content_outputs_target = dict()
 style_outputs_target  = get_outputs( style_layers,content_layers,
@@ -87,39 +84,38 @@ outputs_target = dict()
 outputs_target['style_outputs'] = style_outputs_target
 outputs_target['content_outputs'] = content_outputs_target
 
-# for name, output in sorted(outputs_target.items()):
-#   print("  ", name)
-#   print(output)
-
-# Set initial image (Nous partons de l'image content)
+# Initialisation de l'image à styliser 
 init_image = tf.Variable(content_image)
 
 # Usage d'un adam optimizer
-opt = tf.optimizers.Adam(learning_rate=0.001, beta_1=0.9, epsilon=1e-1)
+opt = tf.optimizers.Adam(learning_rate=0.01)
 
-# Debut du traitement
-content_weight = 1e4
-style_weight= 1e-2
-
+#  Stockage des poids des loss content et loss style
+content_weight = 1e5
+style_weight= 1e-4
 loss_weights = (style_weight, content_weight)
 
+#  Variable de la perte de variation totale
+total_variation_weight = 30
+
+# ========= Debut du traitement ==========
+print('========= Debut du traitement ==========')
 start = time.time()
 
-epochs = 10
-steps_per_epoch = 100
-fig = plt.figure()
+# Utile pour l'affichage
+fig = plt.figure(figsize=(14, 10))
 
+epochs = 1
+steps_per_epoch = 100
 step = 0
 for n in range(epochs):
   for m in range(steps_per_epoch):
     step += 1
-    train_step( opt, init_image, style_layers, content_layers,
-                custom_model, num_layers, outputs_target, loss_weights)
-    # tensor_to_image(init_image).show()
+    train( opt, init_image, style_layers, content_layers,
+                custom_model, num_layers, outputs_target, loss_weights, total_variation_weight)
     print(".",end='')
 
   print("Train step: {}".format(step))
-   # tensor_to_image(init_image).show()
   imshow(plt, init_image)
   plt.draw()
   plt.pause(0.2)
@@ -127,7 +123,35 @@ for n in range(epochs):
 
 end = time.time()
 print("Total time: {:.1f}".format(end-start))
+print('========= Fin du traitement ==========')
 
-imshow(plt, init_image)
+# Analyse perte de variation totale sur les axes verticales et horizontales
+x_deltas_content_image, y_deltas_content_image = high_pass_x_y(content_image)
+x_deltas_image, y_deltas_image = high_pass_x_y(init_image)
+
+init_image = tf.image.resize(
+    init_image, [size_originale_content[0],size_originale_content[1]] , method='nearest', preserve_aspect_ratio=False,
+    antialias=False, name=None)
+
+fig = plt.figure(figsize=(14, 10))
+plt.subplot(3,3,1)
+imshow(plt, init_image,'Transfert')
+plt.subplot(3,3,2)
+imshow(plt, style_image,'Style')
+plt.subplot(3,3,3)
+imshow(plt, content_image,'Content')
+plt.subplot(3,3,4)
+imshow(plt,clip_0_1(2*y_deltas_content_image+0.5), "Horizontal Deltas: Original")
+plt.subplot(3, 3, 5)
+imshow(plt,clip_0_1(2*x_deltas_content_image+0.5), "Vertical Deltas: Original")
+plt.subplot(3,3,7)
+imshow(plt,clip_0_1(2*y_deltas_image+0.5), "Horizontal Deltas: Styled")
+plt.subplot(3, 3, 8)
+imshow(plt,clip_0_1(2*x_deltas_image+0.5), "Vertical Deltas: Styled")
 plt.show()
+
+
+
+
+
 

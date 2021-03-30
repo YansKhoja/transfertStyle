@@ -16,71 +16,37 @@ import sys
 from matplotlib import pyplot as plt
 from tensorflow.python.keras.preprocessing import image as kp_image
 
+# Méthode générant une image en bruit de blanc
+def generative(chemin, saved, shown):
+    # notes : voir si la generation du bruit est correcte
 
-# # function resized returne l'image retaillee dans le format voulu
-# def resized(chemin, name, taille, formatPicture, saved, shown):
-#     # notes : /!\ Voir pour etendre l'image sur l'ensemble de la
-#                   resolution meme si deterioration de l'image
+    # Generer le bruit gaussien de moyenne nulle et d'ecart-type 7 (variance 49)
+    noise = np.random.randint(0,255,[224,224,3])
+    new_img = Image.new('RGB', (224,224))
 
-#     #Charger l'image
-#     print(chemin + name + formatPicture)
-#     img = Image.open(chemin + name + formatPicture)
-#     img_resized = img.resize(taille)
+    # Charger l'image sous forme d'une matrice de pixels
+    img = np.array(new_img)
 
-#     #Afficher l'image chargee redimensionne
-#     # Recuperer et afficher la taille de l'image (en pixels)
-#     w, h = img_resized.size
-#     print("Largeur : {} px, hauteur : {} px".format(w, h))
-#     # Afficher son mode de quantification
-#     print("Format des pixels : {}".format(img_resized.mode))
+    # Creer l'image bruitee et l'afficher
+    generative = img + noise
 
-#     print('Transformation => RGBA -> RGB')
-#     img_rezised_convert = img_resized.convert('RGB')
+    noisy_img = Image.frombuffer('RGB',[224,224], generative)
 
+    w, h = noisy_img.size
+    print("Largeur : {} px, hauteur : {} px".format(w, h))
+    print("Format des pixels : {}".format(noisy_img.mode))
+    noisy_img_array = np.array(noisy_img)
+    print("Taille de la matrice de pixels : {}".format(noisy_img_array.shape))
 
-#     # Recuperer les valeurs de tous les pixels sous forme d'une matrice
-#     img_rezised_convert_array = np.array(img_rezised_convert)
-#     # Afficher la taille de la matrice de pixels
-#     print("Taille de la matrice de pixels : {}".format(img_rezised_convert_array.shape))
+    if saved == True :
+        noisy_img.save(chemin + '\img_white_noise.jpg', noisy_img.format)
 
+    if shown == True :
+        noisy_img.show()
 
-#     if shown == True :
-#         img_rezised_convert.show()
+    return generative
 
-#     if saved == True :
-#         img_rezised_convert.save(chemin + name + '_resized' + formatPicture, img_rezised_convert.format)
-
-#     return resized
-
-# def generative(chemin, saved, shown):
-#     # notes : voir si la generation du bruit est correcte
-
-#     # Generer le bruit gaussien de moyenne nulle et d'ecart-type 7 (variance 49)
-#     noise = np.random.randint(0,255,[224,224,3])
-#     new_img = Image.new('RGB', (224,224))
-
-#     # Charger l'image sous forme d'une matrice de pixels
-#     img = np.array(new_img)
-
-#     # Creer l'image bruitee et l'afficher
-#     generative = img + noise
-
-#     noisy_img = Image.frombuffer('RGB',[224,224], generative)
-
-#     w, h = noisy_img.size
-#     print("Largeur : {} px, hauteur : {} px".format(w, h))
-#     print("Format des pixels : {}".format(noisy_img.mode))
-#     noisy_img_array = np.array(noisy_img)
-#     print("Taille de la matrice de pixels : {}".format(noisy_img_array.shape))
-
-#     if saved == True :
-#         noisy_img.save(chemin + '\img_white_noise.jpg', noisy_img.format)
-
-#     if shown == True :
-#         noisy_img.show()
-
-#     return generative
-
+# Convertir un tenseur en image
 def tensor_to_image(tensor):
   tensor = tensor * 255
   tensor = np.array(tensor, dtype=np.uint8)
@@ -89,6 +55,7 @@ def tensor_to_image(tensor):
     tensor = tensor[0]
   return Image.fromarray(tensor)
 
+#  Méthode permettant l'affichage de l'image stockée dans un tensor de dimension 4
 def imshow(plt, image, title=None):
   if len(image.shape) > 3:
     image = tf.squeeze(image, axis=0)
@@ -96,12 +63,15 @@ def imshow(plt, image, title=None):
   if title:
      plt.title(title)
 
+# Méthode permettant le chargement et resize de l'image
 def load_img(path_to_img, new_shape):
   img = tf.image.decode_image(tf.io.read_file(path_to_img))
   img = tf.image.resize( img, new_shape, method='nearest',
                          preserve_aspect_ratio=False, antialias=True )
   return img
 
+# Méthode permettant de créer le model convolutif basé sur un VGG19 et entrainé sur la base imagenet
+# avec en sortie les features maps définis en argument de la méthode
 def create_model(style_layers, content_layers):
     vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
     vgg.trainable = False
@@ -112,26 +82,27 @@ def create_model(style_layers, content_layers):
     tf.keras.utils.plot_model(model,"model_created.png", show_shapes=True)
     return model
 
+# Méthode permettant de récupèrer les features représentations du modèle pour l'image 
 def get_feature_representations(model, image, nbr_layers):
-
-    # compute content and style features
+    # calculer les features de l'image
     content_outputs = model(image)
-
-    # Get the style and content feature representations from our model
+    # Récuperer les feature representations content et style à partir de notre modèle à partir nos layers intermédiaires spécifiques
+        # style_features -> Nous voulons récupérer les features representation des layers 
+        # 'block1_conv1','block2_conv1','block3_conv1','block4_conv1','block5_conv1' pour 
+        # l'image style
+        # style_features -> Nous voulons récupérer les features representation des layers 
+        # 'block5_conv2' pour l'image content
     style_features = [style_layer[0] for style_layer in content_outputs[:nbr_layers]]
     content_features = [content_layer[0] for content_layer in content_outputs[nbr_layers:]]
-    # modifier pour recuperer le style_features et content_feature sur la meme output donc sur la meme image
-    #  Utiliser les get_feature_reprensentation dans le get style content loss en le jouant sur leur comme l'autre pour avoir les features targets
     return style_features, content_features
 
+# Méthode calculant la matrix de gram
 def gram_matrix(input_tensor):
-   # print(input_tensor.shape)
-   # result = tf.linalg.einsum('ikl,jkl->ijl', input_tensor, input_tensor)
-   # input_shape = tf.shape(input_tensor)
-   # # print(input_shape)
-   # num_locations = tf.cast(input_shape[1]*input_shape[2], tf.float32)
-   # # print(num_locations)
-   # return result/(num_locations)
+    # print(tf.shape(input_tensor))
+    # gram = tf.linalg.einsum('.ik,.kj->lij', input_tensor, input_tensor)
+    # input_shape = tf.shape(input_tensor)
+    # num_locations = tf.cast(input_shape[1]*input_shape[2], tf.float32)
+    # return gram/(num_locations)
 
     # Make the image channels
     channels = int(input_tensor.shape[-1])
@@ -140,11 +111,11 @@ def gram_matrix(input_tensor):
     gram = tf.matmul(a, a, transpose_a=True)
     return gram / tf.cast(n, tf.float32)
 
-
+#  Méthode permettant de récupèrer les features representations final de l'image
 def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
 
     num_content_layers , num_style_layers = num_layers
-    # Get the style and content feature representations (from our specified intermediate layers)
+    
     style_features, content_features = \
         get_feature_representations( custom_model,
                                      image,
@@ -156,10 +127,11 @@ def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
     content_features = \
         [tf.convert_to_tensor(content_feature) for content_feature in content_features]
 
-    # Get gram matrix
+    # Calculer la matrice de GRAM pour chacune des features representation des couches styles
     gram_style_features = \
         [gram_matrix(style_feature) for style_feature in style_features]
 
+    # Stokage dans un unique dictionnaire
     content_dict = {content_name:value
                     for content_name, value
                     in zip(content_layers, content_features)}
@@ -170,30 +142,12 @@ def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
 
     outputs = {'content':content_dict, 'style':style_dict}
 
-    # print('Function get output')
-    # print('Styles:')
-    # for name, output in sorted(outputs['style'].items()):
-    #   print("  ", name)
-    #   print("    shape: ", tf.shape(output))
-    #   print("    min: ", tf.reduce_min(output))
-    #   print("    max: ", tf.reduce_max(output))
-    #   print("    mean: ", tf.reduce_mean(output))
-    #   # print(output)
-
-    # print("Contents:")
-    # for name, output in sorted(outputs['content'].items()):
-    #   print("  ", name)
-    #   print("    shape: ", tf.shape(output))
-    #   print("    min: ", tf.reduce_min(output))
-    #   print("    max: ", tf.reduce_max(output))
-    #   print("    mean: ", tf.reduce_mean(output))
-    #   # print(output)
-
     return outputs
+
 
 def style_content_loss(outputs,target,loss_weights, num_layers):
 
-    # Recyperer les  outputs de l'image d'initialisation
+    # Recuperer les  outputs de l'image d'initialisation
     style_outputs = dict(outputs['style'].items())
     content_outputs = dict(outputs['content'].items())
 
@@ -208,14 +162,26 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     num_style_layers, num_content_layers = num_layers
 
     # todo : Simplify this single instruction to multiple intruction (too long, possible error root cause)
-    style_loss = tf.add_n([tf.reduce_mean(tf.square(style_outputs[name]-style_targets_outputs[name])) for name in style_outputs.keys()])
-    # style_loss *= (4. * (3 ** 2) * ((224*224) ** 2))
+    style_loss = 0
+    for name in style_outputs.keys():
+        sqrt = tf.square(style_outputs[name]-style_targets_outputs[name])
+        sca = tf.reduce_sum(sqrt)
+    style_loss += sca
+    # style_loss = tf.add_n([tf.reduce_mean(tf.square(style_outputs[name]-style_targets_outputs[name])) for name in style_outputs.keys()])
+    
+    style_loss *= (4. * (3 ** 2) * ((224*224) ** 2))
+    
     style_loss *= style_weight / float(num_style_layers)
 
     # todo : Simplify too
-    content_loss = tf.add_n([tf.reduce_mean(tf.square((content_outputs[name]-content_targets_outputs[name]))) for name in content_outputs.keys()])
-    # content_loss *= 1./2.
-    content_loss *= content_weight / float(num_content_layers)
+    for name in content_outputs.keys():
+        sqrt = tf.square(content_outputs[name]-content_targets_outputs[name])
+        sca = tf.reduce_sum(sqrt)
+    content_loss += sca
+    # content_loss = tf.add_n([tf.reduce_mean(tf.square((content_outputs[name]-content_targets_outputs[name]))) for name in content_outputs.keys()])
+    
+    content_loss *= 1./2.
+    # content_loss *= content_weight / float(num_content_layers)
 
     loss = style_loss + content_loss
 
@@ -224,13 +190,11 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
 def clip_0_1(image):
   return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
 
-# Compute gradients according to input image
-def train_step( opt, image_init, style_layers,
+# Calculer les gradients par rapport à l'image d'entrée
+# @tf.function()
+def train( opt, image_init, style_layers,
                 content_layers, custom_model,
-                num_layers,target,loss_weights):
-   # norm_means = np.array([103.939, 116.779, 123.68])
-   # min_vals = -norm_means
-   # max_vals = 255 - norm_means
+                num_layers,target,loss_weights, total_variation_weight):
 
    with tf.GradientTape() as tape:
        outputs = get_outputs( style_layers,
@@ -239,6 +203,7 @@ def train_step( opt, image_init, style_layers,
                               image_init,
                               num_layers)
        loss = style_content_loss(outputs,target,loss_weights, num_layers)
+       loss += total_variation_weight*tf.image.total_variation(image_init)
 
    grad = tape.gradient(loss, image_init)
 
@@ -247,3 +212,9 @@ def train_step( opt, image_init, style_layers,
    # image_init.assign(tf.clip_by_value(image_init, min_vals, max_vals))
 
    return image_init
+
+def high_pass_x_y(image):
+  x_var = image[:, :, 1:, :] - image[:, :, :-1, :]
+  y_var = image[:, 1:, :, :] - image[:, :-1, :, :]
+
+  return x_var, y_var

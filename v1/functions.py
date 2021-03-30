@@ -174,6 +174,7 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     style_loss *= style_weight / float(num_style_layers)
 
     # todo : Simplify too
+    content_loss = 0
     for name in content_outputs.keys():
         sqrt = tf.square(content_outputs[name]-content_targets_outputs[name])
         sca = tf.reduce_sum(sqrt)

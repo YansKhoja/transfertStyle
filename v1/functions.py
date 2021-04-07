@@ -1,20 +1,24 @@
 #
 # Copyright Yans Khoja
 #
-from PIL import Image
-# https://ascendances.wordpress.com/2016/08/03/redimensionner-des-images-avec-python-resize-image/
-import numpy as np
+#  Bibliothèque d'apprentissage profond & manipulation de tenseur
 import tensorflow as tf
-from tensorflow.keras import *
 import keras
 from keras import *
 from keras.applications.vgg19 import VGG19
 from keras.models import Model
 from keras.optimizers import SGD
-from functions import *
-import sys
+
+#  Bibliothèque classique
+import numpy as np
 from matplotlib import pyplot as plt
-from tensorflow.python.keras.preprocessing import image as kp_image
+
+# Receuil de fonctions utilisés dans le programme principale
+from functions import *
+
+#  Bibliothèque système
+import time
+import sys
 
 # Méthode générant une image en bruit de blanc
 def generative(chemin, saved, shown):
@@ -71,7 +75,7 @@ def load_img(path_to_img, new_shape):
   return img
 
 # Méthode permettant de créer le model convolutif basé sur un VGG19 et entrainé sur la base imagenet
-# avec en sortie les features maps définis en argument de la méthode
+# avec en sortie les features maps définis en argument de la méthode et nous empêcherons l'entraînement des paramètres.
 def create_model(style_layers, content_layers):
     vgg = tf.keras.applications.VGG19(include_top=False, weights='imagenet')
     vgg.trainable = False
@@ -79,39 +83,33 @@ def create_model(style_layers, content_layers):
     content_outputs = [vgg.get_layer(name).output for name in content_layers]
     outputs = style_outputs + content_outputs
     model = tf.keras.Model([vgg.input],outputs)
+    model.summary()
     tf.keras.utils.plot_model(model,"model_created.png", show_shapes=True)
     return model
 
-# Méthode permettant de récupèrer les features représentations du modèle pour l'image 
+# Méthode permettant de récupérer les features représentations du modèle pour l'image 
 def get_feature_representations(model, image, nbr_layers):
     # calculer les features de l'image
     content_outputs = model(image)
-    # Récuperer les feature representations content et style à partir de notre modèle à partir nos layers intermédiaires spécifiques
+    # Récupérer les feature representations content et style à partir de notre modèle à partir nos layers intermédiaires spécifiques
         # style_features -> Nous voulons récupérer les features representation des layers 
         # 'block1_conv1','block2_conv1','block3_conv1','block4_conv1','block5_conv1' pour 
         # l'image style
         # style_features -> Nous voulons récupérer les features representation des layers 
-        # 'block5_conv2' pour l'image content
+        # 'block4_conv2' pour l'image content
     style_features = [style_layer[0] for style_layer in content_outputs[:nbr_layers]]
     content_features = [content_layer[0] for content_layer in content_outputs[nbr_layers:]]
     return style_features, content_features
 
-# Méthode calculant la matrix de gram
+# Méthode calculant la matrice de gram
 def gram_matrix(input_tensor):
-    # print(tf.shape(input_tensor))
-    # gram = tf.linalg.einsum('.ik,.kj->lij', input_tensor, input_tensor)
-    # input_shape = tf.shape(input_tensor)
-    # num_locations = tf.cast(input_shape[1]*input_shape[2], tf.float32)
-    # return gram/(num_locations)
-
-    # Make the image channels
     channels = int(input_tensor.shape[-1])
     a = tf.reshape(input_tensor, [-1, channels])
     n = tf.shape(a)[0]
     gram = tf.matmul(a, a, transpose_a=True)
     return gram / tf.cast(n, tf.float32)
 
-#  Méthode permettant de récupèrer les features representations final de l'image
+#  Méthode permettant de récupérer les features representations final de l'image
 def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
 
     num_content_layers , num_style_layers = num_layers
@@ -121,7 +119,7 @@ def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
                                      image,
                                      num_style_layers)
 
-    # Convertion liste en tenseur
+    # Conversion liste en tenseur
     style_features = \
         [tf.convert_to_tensor(style_feature) for style_feature in style_features]
     content_features = \
@@ -131,7 +129,7 @@ def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
     gram_style_features = \
         [gram_matrix(style_feature) for style_feature in style_features]
 
-    # Stokage dans un unique dictionnaire
+    # Stockage dans un unique dictionnaire
     content_dict = {content_name:value
                     for content_name, value
                     in zip(content_layers, content_features)}
@@ -144,10 +142,10 @@ def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
 
     return outputs
 
-
+# Calculer la perte totale
 def style_content_loss(outputs,target,loss_weights, num_layers):
 
-    # Recuperer les  outputs de l'image d'initialisation
+    # Récupérer les  outputs de l'image d'initialisation
     style_outputs = dict(outputs['style'].items())
     content_outputs = dict(outputs['content'].items())
 
@@ -161,7 +159,6 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     style_weight, content_weight = loss_weights
     num_style_layers, num_content_layers = num_layers
 
-    # todo : Simplify this single instruction to multiple intruction (too long, possible error root cause)
     style_loss = 0
     for name in style_outputs.keys():
         sqrt = tf.square(style_outputs[name]-style_targets_outputs[name])
@@ -173,7 +170,6 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     
     style_loss *= style_weight / float(num_style_layers)
 
-    # todo : Simplify too
     content_loss = 0
     for name in content_outputs.keys():
         sqrt = tf.square(content_outputs[name]-content_targets_outputs[name])
@@ -192,10 +188,9 @@ def clip_0_1(image):
   return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
 
 # Calculer les gradients par rapport à l'image d'entrée
-# @tf.function()
 def train( opt, image_init, style_layers,
                 content_layers, custom_model,
-                num_layers,target,loss_weights, total_variation_weight):
+                num_layers,target,loss_weights, total_variation_weight = 0):
 
    with tf.GradientTape() as tape:
        outputs = get_outputs( style_layers,
@@ -210,7 +205,6 @@ def train( opt, image_init, style_layers,
 
    opt.apply_gradients([(grad, image_init)])
    image_init.assign(clip_0_1(image_init))
-   # image_init.assign(tf.clip_by_value(image_init, min_vals, max_vals))
 
    return image_init
 

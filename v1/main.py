@@ -1,27 +1,59 @@
 #
 # Copyright Yans Khoja
 #
-import numpy as np
-from matplotlib import pyplot as plt
+
+#  Bibliothèque d'apprentissage profond & manipulation de tenseur
 import tensorflow as tf
 import keras
 from keras import *
 from keras.applications.vgg19 import VGG19
 from keras.models import Model
 from keras.optimizers import SGD
+
+#  Bibliothèque classique
+import numpy as np
+from matplotlib import pyplot as plt
+
+# Recueil de fonctions utilisés dans le programme principale
 from functions import *
+
+#  Bibliothèque système
 import time
+import sys
 
 # Config GPU
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth=True
 sess =  tf.compat.v1.Session(config=config)
 
-# Activation de l'executing eagerly
-tf.executing_eagerly()
+# Chargement des images
+content_image = tf.keras.preprocessing.image.load_img('.\..\data\Labrador.jpg', color_mode='rgb')
+style_image = tf.keras.preprocessing.image.load_img('.\..\data\Kandinsky.jpg', color_mode='rgb')
+
+# Récupérer la taille des images d'origine
+size_originale_content = np.size(content_image,0) , np.size(content_image,1) 
+size_originale_style = np.size(style_image,0) , np.size(style_image,1) 
+
+# Convertir les images doivent être contenu dans un array (1,224,224,3)
+content_image = np.reshape(content_image,
+                            (1,np.size(content_image,0),
+                                np.size(content_image,1),
+                                np.size(content_image,2)))
+style_image = np.reshape(style_image,
+                          (1, np.size(style_image,0),
+                              np.size(style_image,1),
+                              np.size(style_image,2)))
+
+# Re-tailler les images
+content_image = tf.image.resize(content_image, [224,224], method='nearest')
+style_image = tf.image.resize(style_image, [224,224], method='nearest')
+
+# Conversion en float 32
+content_image = tf.image.convert_image_dtype(content_image, tf.float32)
+style_image = tf.image.convert_image_dtype(style_image, tf.float32)
 
 # Listes des "feature maps" à récupérer pour l'image content
-content_layers = ['block5_conv2']
+content_layers = ['block4_conv2']
 
 # Listes des "feature maps" à récupérer pour l'image content
 style_layers = ['block1_conv1',
@@ -36,37 +68,7 @@ num_content_layers = len(content_layers)
 num_style_layers = len(style_layers)
 num_layers = (num_content_layers,num_style_layers)
 
-# Chargement des images
-content_image = tf.keras.preprocessing.image.load_img('.\..\data\Labrador.jpg', grayscale=False, color_mode='rgb', target_size=None,
-    interpolation='nearest')
-style_image = tf.keras.preprocessing.image.load_img('.\..\data\Kandinsky.jpg', grayscale=False, color_mode='rgb', target_size=None,
-    interpolation='nearest')
-
-size_originale_content = np.size(content_image,0) , np.size(content_image,1) 
-size_originale_style = np.size(style_image,0) , np.size(style_image,1) 
-
-# Convertir les images doivent etre contenu dans un array (1,224,224,3) et en float 32
-content_image = np.reshape(content_image,
-                            (1,np.size(content_image,0),
-                                np.size(content_image,1),
-                                np.size(content_image,2)))
-
-style_image = np.reshape(style_image,
-                          (1, np.size(style_image,0),
-                              np.size(style_image,1),
-                              np.size(style_image,2)))
-
-content_image = tf.image.resize(content_image, [224,224], method='nearest', preserve_aspect_ratio=False,
-    antialias=False)
-style_image = tf.image.resize(style_image, [224,224], method='nearest', preserve_aspect_ratio=False,
-    antialias=False)
-
-
-
-content_image = tf.image.convert_image_dtype(content_image, tf.float32)
-style_image = tf.image.convert_image_dtype(style_image, tf.float32)
-
-# Creation du modele
+# Création du modèle
 custom_model = create_model(style_layers, content_layers)
 
 # Stockage des "feature representation" pour chacune des images
@@ -88,11 +90,11 @@ outputs_target['content_outputs'] = content_outputs_target
 init_image = tf.Variable(content_image)
 
 # Usage d'un adam optimizer
-opt = tf.optimizers.Adam(learning_rate=0.01)
+opt = tf.optimizers.Adam(learning_rate=0.02)
 
 #  Stockage des poids des loss content et loss style
-content_weight = 1e5
-style_weight= 1e-4
+content_weight = 1e4
+style_weight= 1e-2
 loss_weights = (style_weight, content_weight)
 
 #  Variable de la perte de variation totale
@@ -101,9 +103,6 @@ total_variation_weight = 30
 # ========= Debut du traitement ==========
 print('========= Debut du traitement ==========')
 start = time.time()
-
-# Utile pour l'affichage
-fig = plt.figure(figsize=(14, 10))
 
 epochs = 1
 steps_per_epoch = 100
@@ -114,16 +113,14 @@ for n in range(epochs):
     train( opt, init_image, style_layers, content_layers,
                 custom_model, num_layers, outputs_target, loss_weights, total_variation_weight)
     print(".",end='')
-
   print("Train step: {}".format(step))
-  imshow(plt, init_image)
-  plt.draw()
-  plt.pause(0.2)
-  fig.clear()
 
 end = time.time()
 print("Total time: {:.1f}".format(end-start))
 print('========= Fin du traitement ==========')
+
+# Utile pour l'affichage
+fig = plt.figure(figsize=(14, 10))
 
 # Analyse perte de variation totale sur les axes verticales et horizontales
 x_deltas_content_image, y_deltas_content_image = high_pass_x_y(content_image)
@@ -133,7 +130,6 @@ init_image = tf.image.resize(
     init_image, [size_originale_content[0],size_originale_content[1]] , method='nearest', preserve_aspect_ratio=False,
     antialias=False, name=None)
 
-fig = plt.figure(figsize=(14, 10))
 plt.subplot(3,3,1)
 imshow(plt, init_image,'Transfert')
 plt.subplot(3,3,2)

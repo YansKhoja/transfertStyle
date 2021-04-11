@@ -6,6 +6,7 @@
 import tensorflow as tf
 import keras
 from keras import *
+from tensorflow.keras.applications import vgg19
 from keras.applications.vgg19 import VGG19
 from keras.models import Model
 from keras.optimizers import SGD
@@ -14,12 +15,16 @@ from keras.optimizers import SGD
 import numpy as np
 from matplotlib import pyplot as plt
 
+# Image et animation
+import PIL.Image
+
 # Recueil de fonctions utilisés dans le programme principale
 from functions import *
 
 #  Bibliothèque système
 import time
 import sys
+import os
 
 # Config GPU
 config = tf.compat.v1.ConfigProto()
@@ -27,8 +32,8 @@ config.gpu_options.allow_growth=True
 sess =  tf.compat.v1.Session(config=config)
 
 # Chargement des images
-content_image = tf.keras.preprocessing.image.load_img('.\..\data\Labrador.jpg', color_mode='rgb')
-style_image = tf.keras.preprocessing.image.load_img('.\..\data\Kandinsky.jpg', color_mode='rgb')
+content_image = tf.keras.preprocessing.image.load_img('.\..\data\input\Turtle.jpg', color_mode='rgb')
+style_image = tf.keras.preprocessing.image.load_img('.\..\data\input\Kanagawa.jpg', color_mode='rgb')
 
 # Récupérer la taille des images d'origine
 size_originale_content = np.size(content_image,0) , np.size(content_image,1) 
@@ -52,8 +57,9 @@ style_image = tf.image.resize(style_image, [224,224], method='nearest')
 content_image = tf.image.convert_image_dtype(content_image, tf.float32)
 style_image = tf.image.convert_image_dtype(style_image, tf.float32)
 
+
 # Listes des "feature maps" à récupérer pour l'image content
-content_layers = ['block4_conv2']
+content_layers = ['block5_conv2']
 
 # Listes des "feature maps" à récupérer pour l'image content
 style_layers = ['block1_conv1',
@@ -90,64 +96,63 @@ outputs_target['content_outputs'] = content_outputs_target
 init_image = tf.Variable(content_image)
 
 # Usage d'un adam optimizer
-opt = tf.optimizers.Adam(learning_rate=0.02)
+opt = tf.optimizers.Adam(learning_rate=0.025)
 
 #  Stockage des poids des loss content et loss style
-content_weight = 1e4
-style_weight= 1e-2
+content_weight = 1e15
+style_weight= 1e-5
 loss_weights = (style_weight, content_weight)
 
 #  Variable de la perte de variation totale
-total_variation_weight = 30
+total_variation_weight = 50
 
 # ========= Debut du traitement ==========
 print('========= Debut du traitement ==========')
 start = time.time()
 
-epochs = 1
+epochs = 15
 steps_per_epoch = 100
 step = 0
+fname = "image_generée_iteration_%d.jpg" % 0
+tensor_to_image(init_image).save(".\..\data\output\jpg\_" + fname)
 for n in range(epochs):
   for m in range(steps_per_epoch):
     step += 1
     train( opt, init_image, style_layers, content_layers,
                 custom_model, num_layers, outputs_target, loss_weights, total_variation_weight)
+    init_image = init_image
     print(".",end='')
   print("Train step: {}".format(step))
+  n = n + 1
+  fname = "image_generée_iteration_%d.jpg" % n
+  tensor_to_image(init_image).save(".\..\data\output\jpg\_" + fname)
 
 end = time.time()
 print("Total time: {:.1f}".format(end-start))
 print('========= Fin du traitement ==========')
 
-# Utile pour l'affichage
-fig = plt.figure(figsize=(14, 10))
-
-# Analyse perte de variation totale sur les axes verticales et horizontales
-x_deltas_content_image, y_deltas_content_image = high_pass_x_y(content_image)
-x_deltas_image, y_deltas_image = high_pass_x_y(init_image)
-
-init_image = tf.image.resize(
-    init_image, [size_originale_content[0],size_originale_content[1]] , method='nearest', preserve_aspect_ratio=False,
-    antialias=False, name=None)
-
-plt.subplot(3,3,1)
-imshow(plt, init_image,'Transfert')
-plt.subplot(3,3,2)
-imshow(plt, style_image,'Style')
-plt.subplot(3,3,3)
-imshow(plt, content_image,'Content')
-plt.subplot(3,3,4)
-imshow(plt,clip_0_1(2*y_deltas_content_image+0.5), "Horizontal Deltas: Original")
-plt.subplot(3, 3, 5)
-imshow(plt,clip_0_1(2*x_deltas_content_image+0.5), "Vertical Deltas: Original")
-plt.subplot(3,3,7)
-imshow(plt,clip_0_1(2*y_deltas_image+0.5), "Horizontal Deltas: Styled")
-plt.subplot(3, 3, 8)
-imshow(plt,clip_0_1(2*x_deltas_image+0.5), "Vertical Deltas: Styled")
+plt.figure(1,[100,100])
+init_image = tf.image.resize(init_image, size_originale_content, method='nearest')
+content_image = tf.image.resize(content_image, size_originale_content, method='nearest')
+style_image = tf.image.resize(style_image, size_originale_style, method='nearest')
+plt.subplot(2,3,5)
+imshow(plt,init_image, 'Image final')
+plt.subplot(2,3,1)
+imshow(plt,content_image, 'Image réaliste')
+plt.subplot(2,3,3)
+imshow(plt,style_image, 'Image style')
 plt.show()
 
-
-
-
+# Création d'une animation
+List= []
+for n in range(epochs) :
+    fname = ".\..\data\output\jpg\_image_generée_iteration_%d.jpg" % n
+    img = PIL.Image.open(fname)
+    fname = ".\..\data\output\gif\_image_generée_iteration_%d.gif" % n
+    img.save(fname)
+    print("Image: {}".format(n))
+    img = PIL.Image.open(fname)
+    List.append(img)
+List[0].save('.\..\data\output\gif\style_transfert.gif',save_all=True, append_images=List[1:], optimize=False, duration=200, loop=0)
 
 

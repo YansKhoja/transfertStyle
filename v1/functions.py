@@ -12,6 +12,7 @@ from keras.optimizers import SGD
 #  Bibliothèque classique
 import numpy as np
 from matplotlib import pyplot as plt
+import PIL.Image
 
 # Receuil de fonctions utilisés dans le programme principale
 from functions import *
@@ -57,7 +58,7 @@ def tensor_to_image(tensor):
   if np.ndim(tensor)>3:
     assert tensor.shape[0] == 1
     tensor = tensor[0]
-  return Image.fromarray(tensor)
+  return PIL.Image.fromarray(tensor)
 
 #  Méthode permettant l'affichage de l'image stockée dans un tensor de dimension 4
 def imshow(plt, image, title=None):
@@ -83,8 +84,8 @@ def create_model(style_layers, content_layers):
     content_outputs = [vgg.get_layer(name).output for name in content_layers]
     outputs = style_outputs + content_outputs
     model = tf.keras.Model([vgg.input],outputs)
-    model.summary()
-    tf.keras.utils.plot_model(model,"model_created.png", show_shapes=True)
+    # model.summary()
+    tf.keras.utils.plot_model(model,".\..\data\graph\model_created.png", show_shapes=True)
     return model
 
 # Méthode permettant de récupérer les features représentations du modèle pour l'image 
@@ -105,9 +106,8 @@ def get_feature_representations(model, image, nbr_layers):
 def gram_matrix(input_tensor):
     channels = int(input_tensor.shape[-1])
     a = tf.reshape(input_tensor, [-1, channels])
-    n = tf.shape(a)[0]
     gram = tf.matmul(a, a, transpose_a=True)
-    return gram / tf.cast(n, tf.float32)
+    return gram
 
 #  Méthode permettant de récupérer les features representations final de l'image
 def get_outputs(style_layers, content_layers, custom_model, image, num_layers):
@@ -155,7 +155,7 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     content_targets = dict(target['content_outputs'].items())
     content_targets_outputs = dict(content_targets['content'].items())
 
-
+    # Calcul perte style 
     style_weight, content_weight = loss_weights
     num_style_layers, num_content_layers = num_layers
 
@@ -163,22 +163,23 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
     for name in style_outputs.keys():
         sqrt = tf.square(style_outputs[name]-style_targets_outputs[name])
         sca = tf.reduce_sum(sqrt)
-    style_loss += sca
+        style_loss += 1./5. * sca
     # style_loss = tf.add_n([tf.reduce_mean(tf.square(style_outputs[name]-style_targets_outputs[name])) for name in style_outputs.keys()])
     
     style_loss *= (4. * (3 ** 2) * ((224*224) ** 2))
     
     style_loss *= style_weight / float(num_style_layers)
-
+    
+    # Calcul perte content
     content_loss = 0
     for name in content_outputs.keys():
         sqrt = tf.square(content_outputs[name]-content_targets_outputs[name])
         sca = tf.reduce_sum(sqrt)
-    content_loss += sca
+        content_loss += sca
     # content_loss = tf.add_n([tf.reduce_mean(tf.square((content_outputs[name]-content_targets_outputs[name]))) for name in content_outputs.keys()])
     
     content_loss *= 1./2.
-    # content_loss *= content_weight / float(num_content_layers)
+    content_loss *= content_weight / float(num_content_layers)
 
     loss = style_loss + content_loss
 
@@ -186,8 +187,10 @@ def style_content_loss(outputs,target,loss_weights, num_layers):
 
 def clip_0_1(image):
   return tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=1.0)
+  
 
 # Calculer les gradients par rapport à l'image d'entrée
+@tf.function
 def train( opt, image_init, style_layers,
                 content_layers, custom_model,
                 num_layers,target,loss_weights, total_variation_weight = 0):

@@ -42,14 +42,15 @@ conda install keras-preprocessing = 1.1.0
 
 ## Step 4 : Répertoires et manipulation
 
-Le répertoire data contient les images en entrée et les images générée (+graph)
-Le répertoire v1 contient le programme
-Le répertoire graph contient le graph du modèle 
-Le répertoire input contient les images style et content
-Le répertoire output contient les images transfert en .jpg et .gif
-Le fichier main.py est le programme principal
-Le fichier functions.py contient les fonctions utilisées par le programmes principales
-Ne pas prendre en compte le fichier test.py 
+* Le répertoire data contient les images en entrée et les images générée (+graph)
+* Le répertoire v1 contient le programme
+* Le répertoire graph contient le graph du modèle 
+* Le répertoire input contient les images style et content
+* Le répertoire output contient les images transfert en .jpg et .gif
+* Le fichier main.py est le programme principal
+* Le fichier functions.py contient les fonctions utilisées par le programmes principales
+
+Remarque : Ne pas prendre en compte le fichier test.py 
 
 ## Comment lancer le programme ?
 
